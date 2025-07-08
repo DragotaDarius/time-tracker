@@ -59,12 +59,13 @@ export async function POST(req: NextRequest) {
     );
     console.log('Service role client created');
 
-    // Check if user already exists
+    // Check if user already exists and create if needed
     console.log('Checking if user already exists...');
     let authData;
     let isExistingUser = false;
     
     try {
+      // First try to get existing user
       const { data: existingUserData } = await serviceRoleClient.auth.admin.listUsers();
       const userExists = existingUserData.users.find(user => user.email === validatedData.email);
       
@@ -140,7 +141,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Create user profile with retry logic
+    // Create user profile
     console.log('Creating user profile...');
     const profileData = {
       id: authData.user.id,
@@ -164,27 +165,19 @@ export async function POST(req: NextRequest) {
     if (existingProfile) {
       console.log('User profile already exists, skipping creation');
     } else {
-      // Add a small delay to ensure user is fully committed
-      console.log('Waiting 1 second for user to be fully committed...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Verify user exists in auth.users before creating profile
-      console.log('Verifying user exists in auth.users...');
-      const { data: userCheck, error: userCheckError } = await serviceRoleClient.auth.admin.getUserById(authData.user.id);
-      
-      if (userCheckError || !userCheck.user) {
-        console.error('User verification failed:', userCheckError);
-        profileError = userCheckError || new Error('User not found in auth.users');
-      } else {
-        console.log('User verified, creating profile...');
-        // Create user profile (user should be immediately available with service role)
-        const { error } = await serviceRoleClient
-          .from('user_profiles')
-          .insert(profileData);
-        
-        profileError = error;
-        console.log('Profile creation result:', { profileError });
+      // For new users, wait a bit longer to ensure user is fully committed
+      if (!isExistingUser) {
+        console.log('Waiting 2 seconds for new user to be fully committed...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
+      
+      console.log('Creating user profile...');
+      const { error } = await serviceRoleClient
+        .from('user_profiles')
+        .insert(profileData);
+      
+      profileError = error;
+      console.log('Profile creation result:', { profileError });
     }
     
     console.log('Profile result:', { profileError });
