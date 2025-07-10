@@ -14,15 +14,18 @@ export default function SignupPage() {
     organizationSubdomain: '',
   });
   const [error, setError] = useState('');
+  const [debug, setDebug] = useState<any>(null); // <-- Add debug state
   const { signUp, isLoading } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+    setDebug(null);
+    console.log('[Signup] Submitting form:', formData);
     const result = await signUp(formData);
-    
+    console.log('[Signup] API result:', result);
+    setDebug(result);
     if (result.error) {
       setError(result.error);
     } else {
@@ -63,6 +66,11 @@ export default function SignupPage() {
             <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
               {error}
             </div>
+          )}
+          {debug && (
+            <pre className="mb-4 bg-gray-100 border border-gray-200 text-xs text-gray-700 px-4 py-3 rounded overflow-x-auto">
+              {JSON.stringify(debug, null, 2)}
+            </pre>
           )}
 
           <form className="space-y-6" onSubmit={handleSubmit}>
